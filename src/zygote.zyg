@@ -1,0 +1,60 @@
+#!/usr/bin/env nqp
+
+use NQPHLL;
+
+grammar Zygote::Grammar is HLL::Grammar {
+    token TOP { <statementlist> }
+    token ws { <!ww> \h* || \h+ }
+
+    rule statementlist { [ <statement> "\n"+ ]* }
+
+    proto token statement {*}
+    token statement:sym<say> {
+        <sym> <.ws> <value>
+    }
+
+    proto token value {*}
+    token value:sym<string> { <?["]> <quote_EXPR: ':q'> }
+    token value:sym<integer> { '-'? \d+ }
+    token value:sym<float>   { '-'? \d+ '.' \d+ }
+}
+
+grammar Zygote::Actions is HLL::Actions {
+    method TOP($/) {
+        make QAST::Block.new(
+            QAST::Var.new(:name<@*ARGS>, :scope<local>, :decl<param>),
+            $<statementlist>.ast,
+        );
+    }
+
+    method statementlist($/) {
+        my $stmts := QAST::Stmts.new( :node($/) );
+        for $<statement> {
+            $stmts.push($_.ast);
+        }
+        make $stmts;
+    }
+
+    method statement:sym<say>($/) {
+        make QAST::Op.new( :op('say'), $<value>.ast );
+    }
+
+    method value:sym<string>($/) { make $<quote_EXPR>.ast; }
+    method value:sym<integer>($/) {
+        make QAST::IVal.new: :value(+$/.Str);
+    }
+    method value:sym<float>($/) {
+        make QAST::NVal.new: :value(+$/.Str);
+    }
+}
+
+grammar Zygote::Compiler is HLL::Compiler {
+}
+
+sub MAIN (*@ARGS) {
+    my $comp := Zygote::Compiler.new;
+    $comp.language('Zygote');
+    $comp.parsegrammar(Zygote::Grammar);
+    $comp.parseactions(Zygote::Actions);
+    $comp.command_line(@ARGS, :encoding<utf8>);
+}
