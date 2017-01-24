@@ -9,12 +9,12 @@ grammar Zygote::Grammar is HLL::Grammar {
     rule statementlist { [ <statement> "\n"+ ]* }
 
     proto token statement {*}
-    token statement:sym<say> {
+    token statement:sym<💬> {
         <sym> <.ws> <value>
     }
 
     proto token value {*}
-    token value:sym<string> { <?["]> <quote_EXPR: ':q'> }
+    token value:sym<string> { <?["']> <quote_EXPR: ':q'> }
     token value:sym<integer> { '-'? \d+ }
     token value:sym<float>   { '-'? \d+ '.' \d+ }
 }
@@ -35,7 +35,7 @@ grammar Zygote::Actions is HLL::Actions {
         make $stmts;
     }
 
-    method statement:sym<say>($/) {
+    method statement:sym<💬>($/) {
         make QAST::Op.new( :op('say'), $<value>.ast );
     }
 
